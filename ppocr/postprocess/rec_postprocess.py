@@ -289,16 +289,13 @@ class SEEDLabelDecode(BaseRecLabelDecode):
 
     def __init__(self, character_dict_path=None, use_space_char=False,
                  **kwargs):
-        super(SEEDLabelDecode, self).__init__(character_dict_path,
-                                              use_space_char)
+        super(SEEDLabelDecode, self).__init__(character_dict_path,use_space_char)
 
     def add_special_char(self, dict_character):
         self.padding_str = "padding"
         self.end_str = "eos"
         self.unknown = "unknown"
-        dict_character = dict_character + [
-            self.end_str, self.padding_str, self.unknown
-        ]
+        dict_character = dict_character + [self.end_str, self.padding_str, self.unknown]
         return dict_character
 
     def get_ignored_tokens(self):

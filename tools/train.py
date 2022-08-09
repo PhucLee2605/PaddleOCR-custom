@@ -13,6 +13,19 @@
 # limitations under the License.
 
 from __future__ import absolute_import
+import tools.program as program
+from ppocr.modeling.architectures import apply_to_static
+from ppocr.utils.utility import set_seed
+from ppocr.utils.save_load import load_model
+from ppocr.metrics import build_metric
+from ppocr.postprocess import build_post_process
+from ppocr.optimizer import build_optimizer
+from ppocr.losses import build_loss
+from ppocr.modeling.architectures import build_model
+from ppocr.data import build_dataloader
+import paddle.distributed as dist
+import paddle
+import yaml
 from __future__ import division
 from __future__ import print_function
 
@@ -23,20 +36,6 @@ __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, '..')))
 
-import yaml
-import paddle
-import paddle.distributed as dist
-
-from ppocr.data import build_dataloader
-from ppocr.modeling.architectures import build_model
-from ppocr.losses import build_loss
-from ppocr.optimizer import build_optimizer
-from ppocr.postprocess import build_post_process
-from ppocr.metrics import build_metric
-from ppocr.utils.save_load import load_model
-from ppocr.utils.utility import set_seed
-from ppocr.modeling.architectures import apply_to_static
-import tools.program as program
 
 dist.get_world_size()
 
@@ -72,46 +71,34 @@ def main(config, device, logger, vdl_writer):
     # for rec algorithm
     if hasattr(post_process_class, 'character'):
         char_num = len(getattr(post_process_class, 'character'))
-        if config['Architecture']["algorithm"] in ["Distillation",
-                                                   ]:  # distillation model
+        if config['Architecture']["algorithm"] in ["Distillation",]:  # distillation model
             for key in config['Architecture']["Models"]:
-                if config['Architecture']['Models'][key]['Head'][
-                        'name'] == 'MultiHead':  # for multi head
-                    if config['PostProcess'][
-                            'name'] == 'DistillationSARLabelDecode':
+                if config['Architecture']['Models'][key]['Head']['name'] == 'MultiHead':  # for multi head
+                    if config['PostProcess']['name'] == 'DistillationSARLabelDecode':
                         char_num = char_num - 2
                     # update SARLoss params
-                    assert list(config['Loss']['loss_config_list'][-1].keys())[
-                        0] == 'DistillationSARLoss'
-                    config['Loss']['loss_config_list'][-1][
-                        'DistillationSARLoss']['ignore_index'] = char_num + 1
+                    assert list(config['Loss']['loss_config_list']
+                                [-1].keys())[0] == 'DistillationSARLoss'
+                    config['Loss']['loss_config_list'][-1]['DistillationSARLoss']['ignore_index'] = char_num + 1
                     out_channels_list = {}
                     out_channels_list['CTCLabelDecode'] = char_num
                     out_channels_list['SARLabelDecode'] = char_num + 2
-                    config['Architecture']['Models'][key]['Head'][
-                        'out_channels_list'] = out_channels_list
+                    config['Architecture']['Models'][key]['Head']['out_channels_list'] = out_channels_list
                 else:
-                    config['Architecture']["Models"][key]["Head"][
-                        'out_channels'] = char_num
-        elif config['Architecture']['Head'][
-                'name'] == 'MultiHead':  # for multi head
+                    config['Architecture']["Models"][key]["Head"]['out_channels'] = char_num
+        elif config['Architecture']['Head']['name'] == 'MultiHead':  # for multi head
             if config['PostProcess']['name'] == 'SARLabelDecode':
                 char_num = char_num - 2
             # update SARLoss params
-            assert list(config['Loss']['loss_config_list'][1].keys())[
-                0] == 'SARLoss'
+            assert list(config['Loss']['loss_config_list'][1].keys())[0] == 'SARLoss'
             if config['Loss']['loss_config_list'][1]['SARLoss'] is None:
-                config['Loss']['loss_config_list'][1]['SARLoss'] = {
-                    'ignore_index': char_num + 1
-                }
+                config['Loss']['loss_config_list'][1]['SARLoss'] = {'ignore_index': char_num + 1}
             else:
-                config['Loss']['loss_config_list'][1]['SARLoss'][
-                    'ignore_index'] = char_num + 1
+                config['Loss']['loss_config_list'][1]['SARLoss']['ignore_index'] = char_num + 1
             out_channels_list = {}
             out_channels_list['CTCLabelDecode'] = char_num
             out_channels_list['SARLabelDecode'] = char_num + 2
-            config['Architecture']['Head'][
-                'out_channels_list'] = out_channels_list
+            config['Architecture']['Head']['out_channels_list'] = out_channels_list
         else:  # base rec model
             config['Architecture']["Head"]['out_channels'] = char_num
 
@@ -128,11 +115,10 @@ def main(config, device, logger, vdl_writer):
     loss_class = build_loss(config['Loss'])
 
     # build optim
-    optimizer, lr_scheduler = build_optimizer(
-        config['Optimizer'],
-        epochs=config['Global']['epoch_num'],
-        step_each_epoch=len(train_dataloader),
-        model=model)
+    optimizer, lr_scheduler = build_optimizer(config['Optimizer'],
+                                              epochs=config['Global']['epoch_num'],
+                                              step_each_epoch=len(train_dataloader),
+                                              model=model)
 
     # build metric
     eval_class = build_metric(config['Metric'])
