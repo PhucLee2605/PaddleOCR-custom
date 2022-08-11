@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tools.program as program
 from ppocr.modeling.architectures import apply_to_static
 from ppocr.utils.utility import set_seed
@@ -26,8 +28,6 @@ from ppocr.data import build_dataloader
 import paddle.distributed as dist
 import paddle
 import yaml
-from __future__ import division
-from __future__ import print_function
 
 import os
 import sys
